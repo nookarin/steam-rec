@@ -1,0 +1,62 @@
+[data-theme="light"] {
+  --color-text: #1b2838;
+  --color-text-muted: #5a6e7e;
+  --color-text-heading: #0e1a28;
+
+  --color-bg: #eef2f5;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f0f3f5;
+  --color-bg-overlay: rgba(0, 0, 0, 0.3);
+
+  --color-border: #d1d9e0;
+  --color-border-light: #bfc9d1;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.1);
+
+  --color-primary: #1a9fff;
+  --color-primary-hover: #0d85e0;
+  --color-accent: #1b2838;
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-danger: #c62828;
+}
+
+[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .tag {
+  background: rgba(26, 159, 255, 0.1);
+}
+
+[data-theme="light"] .tag--playtime {
+  background: rgba(46, 125, 50, 0.1);
+}
+
+[data-theme="light"] .tag--match {
+  background: rgba(230, 81, 0, 0.1);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+
+[data-theme="light"] .tooltip {
+  background: #fff;
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .skeleton {
+  background: linear-gradient(90deg, #e8edf0 25%, #d1d9e0 50%, #e8edf0 75%);
+  background-size: 200% 100%;
+}
+
+[data-theme="light"] .donut-chart__center {
+  background: var(--color-bg-card);
+}

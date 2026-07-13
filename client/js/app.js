@@ -1,5 +1,5 @@
 import { getState, setState, resetState, subscribe } from './state.js';
-import { fetchLibrary, fetchRecommendations, fetchStats, fetchHistory, refreshLibrary } from './api.js';
+import { fetchLibrary, fetchRecommendations, fetchStats, fetchHistory, refreshLibrary, fetchAchievements, fetchAchievementSummary } from './api.js';
 import { getSteamId, setSteamId, addRecentSearch, getRecentSearches } from './utils/storage.js';
 import { parseSteamInput, isValidSteamInput } from './utils/validate.js';
 import { renderGameGrid } from './components/gameCard.js';
@@ -52,20 +52,22 @@ async function loadUserData(rawInput, forceRefresh = false) {
       await refreshLibrary(steamId);
     }
 
-    const [library, recs, stats, history] = await Promise.all([
-      fetchLibrary(steamId),
-      fetchRecommendations(steamId, 15),
-      fetchStats(steamId),
-      fetchHistory(steamId, 5)
-    ]);
+    const library = await fetchLibrary(steamId);
+    const resolvedId = library.steamId;
+
+    const recs = await fetchRecommendations(resolvedId, 15).catch(() => ({ recommendations: [] }));
+    const stats = await fetchStats(resolvedId).catch(() => null);
+    const history = await fetchHistory(resolvedId, 5).catch(() => ({ snapshots: [] }));
+    const achievementSummary = await fetchAchievementSummary(resolvedId).catch(() => null);
 
     setState({
       playerName: library.playerName,
       avatarUrl: library.avatarUrl,
-      games: library.games,
-      recommendations: recs.recommendations,
-      stats,
-      history: history.snapshots,
+      games: library.games || [],
+      recommendations: recs?.recommendations || [],
+      stats: stats || null,
+      history: history?.snapshots || [],
+      achievementSummary: achievementSummary || null,
       isLoading: false
     });
 
@@ -89,13 +91,41 @@ function renderHome() {
 function renderLibrary() {
   const state = getState();
   const appContent = $('#app-content');
-  if (!state.games.length) { renderHome(); return; }
+  if (!state.games || !state.games.length) { renderHome(); return; }
 
   const heroSection = $('#hero-section');
   heroSection.classList.add('hidden');
   appContent.classList.remove('hidden');
 
   appContent.innerHTML = `
+    ${state.achievementSummary && state.achievementSummary.gamesTracked > 0 ? `
+    <section id="achievement-summary-section">
+      <h2 class="section__title">🏆 Achievement Summary</h2>
+      <div class="achievement-summary">
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${state.achievementSummary.totalEarned}</div>
+          <div class="achievement-summary__label">Achievements Earned</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${state.achievementSummary.totalPossible}</div>
+          <div class="achievement-summary__label">Total Possible</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${state.achievementSummary.overallPercentage}%</div>
+          <div class="achievement-summary__label">Completion</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${state.achievementSummary.gamesTracked}</div>
+          <div class="achievement-summary__label">Games Tracked</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${state.achievementSummary.completedGames}</div>
+          <div class="achievement-summary__label">100% Completed</div>
+        </div>
+      </div>
+    </section>
+    ` : ''}
+
     <section id="library-section">
       <div class="flex flex--between mb-md">
         <h2 class="section__title">
@@ -238,6 +268,104 @@ function renderHistoryView() {
   });
 }
 
+async function renderAchievements() {
+  const state = getState();
+  const appContent = $('#app-content');
+  const heroSection = $('#hero-section');
+  if (!state.steamId) { renderHome(); return; }
+
+  heroSection.classList.add('hidden');
+  appContent.classList.remove('hidden');
+  showLoading(appContent);
+
+  try {
+    const result = await fetchAchievements(state.steamId);
+    const games = result.achievements || [];
+
+    if (games.length === 0) {
+      appContent.innerHTML = `
+        <h2 class="section__title mb-lg">🏆 Achievements</h2>
+        <div class="empty-state">
+          <div class="empty-state__icon">🏆</div>
+          <div class="empty-state__title">No achievements found</div>
+          <p class="text-muted">Play some games with achievements to track them here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const totalEarned = games.reduce((s, g) => s + g.earnedCount, 0);
+    const totalPossible = games.reduce((s, g) => s + g.totalAchievements, 0);
+
+    appContent.innerHTML = `
+      <h2 class="section__title mb-lg">🏆 Achievements</h2>
+      <div class="achievement-summary mb-lg">
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${totalEarned}</div>
+          <div class="achievement-summary__label">Earned</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${totalPossible}</div>
+          <div class="achievement-summary__label">Total</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0}%</div>
+          <div class="achievement-summary__label">Overall</div>
+        </div>
+        <div class="achievement-summary__item">
+          <div class="achievement-summary__value">${games.length}</div>
+          <div class="achievement-summary__label">Games</div>
+        </div>
+      </div>
+      <div id="achievement-games-list"></div>
+    `;
+
+    const list = $('#achievement-games-list');
+    games.forEach((game, i) => {
+      const pct = game.totalAchievements > 0 ? Math.round((game.earnedCount / game.totalAchievements) * 100) : 0;
+      const item = document.createElement('div');
+      item.className = 'card mb-md animate-fade-in';
+      item.style.animationDelay = `${i * 0.03}s`;
+      item.innerHTML = `
+        <div class="card__body">
+          <div class="flex flex--between mb-sm">
+            <div class="flex gap-sm" style="align-items:center;">
+              <img src="${game.headerImage}" alt="" style="width:120px;height:56px;object-fit:cover;border-radius:4px;">
+              <div>
+                <div class="card__title">${game.gameName}</div>
+                <div class="card__meta">
+                  <span class="tag tag--playtime">${game.earnedCount}/${game.totalAchievements}</span>
+                  <span class="tag tag--match">${pct}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="score-bar mb-sm">
+            <div class="score-bar__fill" style="width:${pct}%"></div>
+          </div>
+          <div class="achievement-list">
+            ${game.achievements.map(a => `
+              <div class="achievement-item ${a.achieved ? 'earned' : 'locked'}">
+                <img class="achievement-item__icon" src="${a.achieved ? a.icon : a.iconGray}" alt="" onerror="this.style.display='none'">
+                <div class="achievement-item__info">
+                  <div class="achievement-item__name">${a.name}</div>
+                  <div class="achievement-item__desc">${a.description || ''}</div>
+                </div>
+                <div class="achievement-item__status ${a.achieved ? 'earned' : ''}">
+                  ${a.achieved ? '✓ Earned' : '🔒'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  } catch (err) {
+    showError(appContent, 'Failed to load achievements: ' + err.message);
+  }
+}
+
 function setupHeroForm() {
   const form = $('#hero-form');
   const input = $('#steam-id-input');
@@ -280,6 +408,7 @@ function setupNavigation() {
   registerRoute('library', renderLibrary);
   registerRoute('stats', renderStats);
   registerRoute('history', renderHistoryView);
+  registerRoute('achievements', renderAchievements);
 
   $$('.header__nav-link').forEach(link => {
     link.addEventListener('click', (e) => {

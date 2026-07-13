@@ -47,3 +47,15 @@ export async function fetchHistory(steamId, limit = 5) {
 export async function healthCheck() {
   return request('/health');
 }
+
+export async function fetchAchievements(steamId) {
+  return request(`/achievements/${steamId}`);
+}
+
+export async function fetchAchievementSummary(steamId) {
+  return request(`/achievements/${steamId}/summary`);
+}
+
+export async function fetchGameAchievements(steamId, appId) {
+  return request(`/achievements/${steamId}/${appId}`);
+}

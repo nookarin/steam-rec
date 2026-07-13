@@ -6,6 +6,7 @@ const state = {
   recommendations: [],
   stats: null,
   history: [],
+  achievementSummary: null,
   isLoading: false,
   error: null,
   currentView: 'home',
@@ -49,6 +50,7 @@ export function resetState() {
   state.recommendations = [];
   state.stats = null;
   state.history = [];
+  state.achievementSummary = null;
   state.error = null;
   notify();
 }

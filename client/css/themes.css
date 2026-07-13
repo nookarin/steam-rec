@@ -1,30 +1,55 @@
+/* Steam Light Theme (Steam's bright mode) */
 [data-theme="light"] {
   --color-text: #1b2838;
   --color-text-muted: #5a6e7e;
-  --color-text-heading: #0e1a28;
+  --color-text-heading: #000000;
+  --color-text-link: #1a9fff;
 
   --color-bg: #eef2f5;
+  --color-bg-gradient: linear-gradient(180deg, #eef2f5 0%, #e3e8ec 100%);
   --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f5f8fa;
   --color-bg-input: #f0f3f5;
   --color-bg-overlay: rgba(0, 0, 0, 0.3);
+  --color-bg-header: #ffffff;
+  --color-bg-nav: rgba(0, 0, 0, 0.03);
 
   --color-border: #d1d9e0;
   --color-border-light: #bfc9d1;
+  --color-border-input: #c4cdd5;
 
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 20px rgba(26, 159, 255, 0.1);
 
   --color-primary: #1a9fff;
   --color-primary-hover: #0d85e0;
+  --color-steam-green: #4c6b22;
+  --color-steam-green-hover: #588a1b;
   --color-accent: #1b2838;
-  --color-success: #2e7d32;
+  --color-success: #4c6b22;
   --color-warning: #e65100;
   --color-danger: #c62828;
 }
 
+[data-theme="light"] body {
+  background: var(--color-bg-gradient);
+}
+
 [data-theme="light"] .header {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-bg-header);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="light"] .card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="light"] .card:hover {
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-border-light);
 }
 
 [data-theme="light"] .tag {
@@ -32,11 +57,35 @@
 }
 
 [data-theme="light"] .tag--playtime {
-  background: rgba(46, 125, 50, 0.1);
+  background: rgba(76, 107, 34, 0.1);
 }
 
 [data-theme="light"] .tag--match {
   background: rgba(230, 81, 0, 0.1);
+}
+
+[data-theme="light"] .btn--primary {
+  background: var(--color-steam-green);
+  color: #fff;
+}
+
+[data-theme="light"] .btn--primary:hover {
+  background: var(--color-steam-green-hover);
+}
+
+[data-theme="light"] .input {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-input);
+  color: var(--color-text-heading);
+}
+
+[data-theme="light"] .stat-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="light"] .score-bar__fill {
+  background: var(--color-primary);
 }
 
 [data-theme="light"] ::-webkit-scrollbar-track {
@@ -50,6 +99,7 @@
 [data-theme="light"] .tooltip {
   background: #fff;
   border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 [data-theme="light"] .skeleton {
@@ -59,4 +109,13 @@
 
 [data-theme="light"] .donut-chart__center {
   background: var(--color-bg-card);
+}
+
+[data-theme="light"] .bar-chart__track {
+  background: var(--color-bg-input);
+}
+
+[data-theme="light"] .error-message {
+  background: rgba(198, 40, 40, 0.08);
+  border-color: rgba(198, 40, 40, 0.3);
 }

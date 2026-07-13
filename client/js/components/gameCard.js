@@ -13,6 +13,22 @@ export function createGameCard(game) {
     `<span class="tag tag--genre">${g}</span>`
   ).join('');
 
+  let achievementBadge = '';
+  if (game.achievements && game.achievements.total > 0) {
+    const pct = game.achievements.total > 0
+      ? Math.round((game.achievements.earned / game.achievements.total) * 100)
+      : 0;
+    achievementBadge = `
+      <div class="achievement-badge">
+        <span class="achievement-badge__icon">🏆</span>
+        <span class="achievement-badge__text">${game.achievements.earned}/${game.achievements.total}</span>
+        <div class="achievement-badge__bar">
+          <div class="achievement-badge__fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
   card.innerHTML = `
     <img class="card__image" src="${game.headerImage}" alt="${game.name}" loading="lazy"
          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 460 215%22><rect fill=%22%232a475e%22 width=%22460%22 height=%22215%22/><text x=%2250%%22 y=%2250%%22 fill=%22%2366c0f4%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2216%22>No Image</text></svg>'">
@@ -22,6 +38,7 @@ export function createGameCard(game) {
         ${playtimeTag}
         ${genres}
       </div>
+      ${achievementBadge}
     </div>
   `;
 
@@ -40,10 +57,12 @@ export function renderGameGrid(container, games, emptyMessage = 'No games found'
     return;
   }
 
+  const sorted = [...games].sort((a, b) => (b.playtimeForever || 0) - (a.playtimeForever || 0));
+
   const grid = document.createElement('div');
   grid.className = 'grid grid--auto stagger-children';
 
-  games.forEach(game => {
+  sorted.forEach(game => {
     grid.appendChild(createGameCard(game));
   });
 

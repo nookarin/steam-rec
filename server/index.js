@@ -10,6 +10,7 @@ const libraryRoutes = require('./routes/libraryRoutes');
 const recommendRoutes = require('./routes/recommendRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const historyRoutes = require('./routes/historyRoutes');
+const achievementRoutes = require('./routes/achievementRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,7 @@ app.use('/api/library', libraryRoutes);
 app.use('/api/recommendations', recommendRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 app.use(errorHandler);
 

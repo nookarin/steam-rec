@@ -14,7 +14,8 @@ body {
   font-family: var(--font-family);
   font-size: var(--font-size-md);
   color: var(--color-text);
-  background-color: var(--color-bg);
+  background: var(--color-bg-gradient);
+  background-attachment: fixed;
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;

@@ -47,10 +47,14 @@ class LibraryService {
       }
     }
 
+    console.log(`[SteamService] Fetching games for steamId: ${steamId}`);
+
     const [gamesResponse, profile] = await Promise.all([
       this.steam.getOwnedGames(steamId),
       this.steam.getPlayerSummary(steamId)
     ]);
+
+    console.log(`[SteamService] Steam API returned ${(gamesResponse.games || []).length} games`);
 
     if (!gamesResponse.games || gamesResponse.games.length === 0) {
       throw new Error('No games found. Make sure your Steam profile and game details are set to Public.');
@@ -84,6 +88,8 @@ class LibraryService {
       },
       { new: true, upsert: true }
     );
+
+    console.log(`[SteamService] Saved library to MongoDB: ${games.length} games for ${library.playerName}`);
 
     await PlayerProfile.findOneAndUpdate(
       { steamId },

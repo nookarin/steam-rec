@@ -1,11 +1,15 @@
 const SteamService = require('../config/steam');
 const Library = require('../models/Library');
 const PlayerProfile = require('../models/PlayerProfile');
+const GameDetails = require('../models/GameDetails');
 
 class LibraryService {
   constructor() {
     this.steam = new SteamService(process.env.STEAM_API_KEY);
     this.CACHE_TTL_MS = 60 * 60 * 1000;
+    this.GENRE_BATCH_SIZE = 10;
+    this.GENRE_DELAY_MS = 500;
+    this._genrePending = new Set();
   }
 
   parseSteamInput(input) {
@@ -60,7 +64,7 @@ class LibraryService {
       throw new Error('No games found. Make sure your Steam profile and game details are set to Public.');
     }
 
-    const games = (gamesResponse.games || []).map(g => ({
+    const baseGames = (gamesResponse.games || []).map(g => ({
       appId: g.appid,
       name: g.name,
       playtimeForever: g.playtime_forever || 0,
@@ -72,6 +76,8 @@ class LibraryService {
       genres: [],
       tags: []
     }));
+
+    const games = baseGames;
 
     const totalPlaytime = games.reduce((sum, g) => sum + g.playtimeForever, 0);
 
@@ -103,6 +109,10 @@ class LibraryService {
       { upsert: true }
     );
 
+    if (!this._genrePending.has(steamId)) {
+      this._fetchGenresInBackground(steamId, games);
+    }
+
     return library;
   }
 
@@ -114,6 +124,115 @@ class LibraryService {
   async refreshLibrary(steamId) {
     const resolved = await this.resolveSteamId(steamId);
     return this.fetchAndCacheLibrary(resolved, true);
+  }
+
+  async fetchGenresForGames(games) {
+    const appIds = games.map(g => g.appId);
+    const cached = await GameDetails.find({ appId: { $in: appIds } });
+    const cachedMap = new Map(cached.map(d => [d.appId, d]));
+
+    const toFetch = appIds.filter(id => !cachedMap.has(id));
+    console.log(`[SteamService] Genres: ${cachedMap.size} cached, ${toFetch.length} to fetch`);
+
+    for (let i = 0; i < toFetch.length; i += this.GENRE_BATCH_SIZE) {
+      const batch = toFetch.slice(i, i + this.GENRE_BATCH_SIZE);
+      await Promise.all(batch.map(async (appId) => {
+        try {
+          const details = await this.steam.getAppDetails(appId);
+          if (details) {
+            const genres = (details.genres || []).map(g => g.description);
+            const tags = Object.values(details.categories || {}).map(c => c.description);
+            await GameDetails.findOneAndUpdate(
+              { appId },
+              { appId, name: details.name || '', genres, tags, type: details.type || '', fetchedAt: new Date() },
+              { upsert: true, new: true }
+            );
+            cachedMap.set(appId, { appId, genres, tags });
+          }
+        } catch (err) {
+          console.error(`[SteamService] Failed to fetch details for appId ${appId}: ${err.message}`);
+        }
+      }));
+
+      if (i + this.GENRE_BATCH_SIZE < toFetch.length) {
+        await new Promise(r => setTimeout(r, this.GENRE_DELAY_MS));
+      }
+    }
+
+    return games.map(game => {
+      const details = cachedMap.get(game.appId);
+      return {
+        ...game,
+        genres: details?.genres || game.genres || [],
+        tags: details?.tags || game.tags || []
+      };
+    });
+  }
+
+  async _fetchGenresInBackground(steamId, games) {
+    this._genrePending.add(steamId);
+    console.log(`[SteamService] Background genre fetch started for ${steamId} (${games.length} games)`);
+
+    try {
+      const appIds = games.map(g => g.appId);
+      const cached = await GameDetails.find({ appId: { $in: appIds } });
+      const cachedMap = new Map(cached.map(d => [d.appId, d]));
+
+      const toFetch = appIds.filter(id => !cachedMap.has(id));
+      if (toFetch.length === 0) {
+        console.log(`[SteamService] All genres already cached for ${steamId}`);
+        return;
+      }
+
+      console.log(`[SteamService] Background: ${toFetch.length} genres to fetch for ${steamId}`);
+
+      for (let i = 0; i < toFetch.length; i += this.GENRE_BATCH_SIZE) {
+        const batch = toFetch.slice(i, i + this.GENRE_BATCH_SIZE);
+        await Promise.all(batch.map(async (appId) => {
+          try {
+            const details = await this.steam.getAppDetails(appId);
+            if (details) {
+              const genres = (details.genres || []).map(g => g.description);
+              const tags = Object.values(details.categories || {}).map(c => c.description);
+              await GameDetails.findOneAndUpdate(
+                { appId },
+                { appId, name: details.name || '', genres, tags, type: details.type || '', fetchedAt: new Date() },
+                { upsert: true, new: true }
+              );
+            }
+          } catch (err) {
+            console.error(`[SteamService] Background genre fetch failed for appId ${appId}: ${err.message}`);
+          }
+        }));
+
+        if (i + this.GENRE_BATCH_SIZE < toFetch.length) {
+          await new Promise(r => setTimeout(r, this.GENRE_DELAY_MS));
+        }
+      }
+
+      // Update library with newly fetched genres
+      const updatedCached = await GameDetails.find({ appId: { $in: appIds } });
+      const updatedMap = new Map(updatedCached.map(d => [d.appId, d]));
+      const updatedGames = games.map(game => {
+        const details = updatedMap.get(game.appId);
+        return {
+          ...game,
+          genres: details?.genres || game.genres || [],
+          tags: details?.tags || game.tags || []
+        };
+      });
+
+      await Library.findOneAndUpdate(
+        { steamId },
+        { $set: { games: updatedGames } }
+      );
+
+      console.log(`[SteamService] Background genre fetch completed for ${steamId}: ${toFetch.length} games updated`);
+    } catch (err) {
+      console.error(`[SteamService] Background genre fetch error for ${steamId}: ${err.message}`);
+    } finally {
+      this._genrePending.delete(steamId);
+    }
   }
 }
 

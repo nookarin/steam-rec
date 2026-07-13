@@ -46,6 +46,7 @@ export function createGameCard(game) {
 }
 
 export function renderGameGrid(container, games, emptyMessage = 'No games found') {
+  if (!container) return;
   container.innerHTML = '';
   if (!games || games.length === 0) {
     container.innerHTML = `

@@ -55,25 +55,41 @@ async function loadUserData(rawInput, forceRefresh = false) {
     const library = await fetchLibrary(steamId);
     const resolvedId = library.steamId;
 
-    const recs = await fetchRecommendations(resolvedId, 15).catch(() => ({ recommendations: [] }));
-    const stats = await fetchStats(resolvedId).catch(() => null);
-    const history = await fetchHistory(resolvedId, 5).catch(() => ({ snapshots: [] }));
-    const achievementSummary = await fetchAchievementSummary(resolvedId).catch(() => null);
-
     setState({
       playerName: library.playerName,
       avatarUrl: library.avatarUrl,
       games: library.games || [],
-      recommendations: recs?.recommendations || [],
-      stats: stats || null,
-      history: history?.snapshots || [],
-      achievementSummary: achievementSummary || null,
+      recommendations: [],
+      stats: null,
+      history: [],
       isLoading: false
     });
 
     addRecentSearch(rawInput);
     setSteamId(rawInput);
     navigate('library');
+
+    fetchRecommendations(resolvedId, 15).then((recs) => {
+      setState({ recommendations: recs?.recommendations || [] });
+      renderRecommendations($('#recs-grid'), getState().recommendations);
+    }).catch((err) => {
+      console.error('[SteamRec] Recommendations failed:', err);
+      const container = $('#recs-grid');
+      if (container) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state__icon">💡</div><div class="empty-state__title">No recommendations available</div></div>';
+      }
+    });
+
+    fetchStats(resolvedId).then((stats) => {
+      setState({ stats: stats || null });
+    }).catch((err) => {
+      console.error('[SteamRec] Stats failed:', err);
+    });
+
+    fetchHistory(resolvedId, 5).then((history) => {
+      setState({ history: history?.snapshots || [] });
+    }).catch(() => {});
+
   } catch (err) {
     setState({ isLoading: false, error: err.message });
     showError(appContent, err.message);
@@ -97,34 +113,20 @@ function renderLibrary() {
   heroSection.classList.add('hidden');
   appContent.classList.remove('hidden');
 
+  const hasRecs = state.recommendations && state.recommendations.length > 0;
+
   appContent.innerHTML = `
-    ${state.achievementSummary && state.achievementSummary.gamesTracked > 0 ? `
-    <section id="achievement-summary-section">
-      <h2 class="section__title">🏆 Achievement Summary</h2>
-      <div class="achievement-summary">
-        <div class="achievement-summary__item">
-          <div class="achievement-summary__value">${state.achievementSummary.totalEarned}</div>
-          <div class="achievement-summary__label">Achievements Earned</div>
-        </div>
-        <div class="achievement-summary__item">
-          <div class="achievement-summary__value">${state.achievementSummary.totalPossible}</div>
-          <div class="achievement-summary__label">Total Possible</div>
-        </div>
-        <div class="achievement-summary__item">
-          <div class="achievement-summary__value">${state.achievementSummary.overallPercentage}%</div>
-          <div class="achievement-summary__label">Completion</div>
-        </div>
-        <div class="achievement-summary__item">
-          <div class="achievement-summary__value">${state.achievementSummary.gamesTracked}</div>
-          <div class="achievement-summary__label">Games Tracked</div>
-        </div>
-        <div class="achievement-summary__item">
-          <div class="achievement-summary__value">${state.achievementSummary.completedGames}</div>
-          <div class="achievement-summary__label">100% Completed</div>
-        </div>
+    <section id="recs-section">
+      <h2 class="section__title">💡 Recommendations</h2>
+      <div id="recs-grid">
+        ${hasRecs ? '' : `
+          <div class="flex flex--center" style="padding:var(--space-xl) 0;">
+            <div class="spinner"></div>
+            <span class="text-muted ml-sm">Loading recommendations...</span>
+          </div>
+        `}
       </div>
     </section>
-    ` : ''}
 
     <section id="library-section">
       <div class="flex flex--between mb-md">
@@ -146,11 +148,6 @@ function renderLibrary() {
       </div>
       <div id="game-grid"></div>
     </section>
-
-    <section id="recs-section">
-      <h2 class="section__title">💡 Recommendations</h2>
-      <div id="recs-grid"></div>
-    </section>
   `;
 
   const genreSelect = $('#genre-filter');
@@ -163,20 +160,22 @@ function renderLibrary() {
   });
 
   const gameGrid = $('#game-grid');
-  renderGameGrid(gameGrid, state.games);
+  renderGameGrid(gameGrid, state.games.slice(0, 10));
 
-  renderRecommendations($('#recs-grid'), state.recommendations);
+  if (hasRecs) {
+    renderRecommendations($('#recs-grid'), state.recommendations);
+  }
 
   initSearchBar($('#search-bar-container'), (query) => {
     const genre = genreSelect.value;
     const filtered = filterGames(state.games, query, genre);
-    renderGameGrid(gameGrid, filtered, 'No games match your search');
+    renderGameGrid(gameGrid, filtered.slice(0, 10), 'No games match your search');
   });
 
   genreSelect.addEventListener('change', () => {
     const query = $('#search-input').value.trim().toLowerCase();
     const filtered = filterGames(state.games, query, genreSelect.value);
-    renderGameGrid(gameGrid, filtered, 'No games match this filter');
+    renderGameGrid(gameGrid, filtered.slice(0, 10), 'No games match this filter');
   });
 
   $('#refresh-btn').addEventListener('click', () => loadUserData(state.steamId, true));
@@ -187,11 +186,24 @@ function renderStats() {
   const appContent = $('#app-content');
   const heroSection = $('#hero-section');
   if (!state.stats) {
-    if (state.steamId) {
-      loadUserData(state.steamId);
-    } else {
+    if (!state.steamId) {
       renderHome();
+      return;
     }
+    if (!state.games || !state.games.length) {
+      loadUserData(state.steamId);
+      return;
+    }
+    heroSection.classList.add('hidden');
+    appContent.classList.remove('hidden');
+    appContent.innerHTML = `
+      <h2 class="section__title mb-lg">📊 Statistics</h2>
+      <div class="empty-state">
+        <div class="empty-state__icon">📊</div>
+        <div class="empty-state__title">No stats available</div>
+        <p class="text-muted">Stats could not be loaded for your library.</p>
+      </div>
+    `;
     return;
   }
 
@@ -233,7 +245,11 @@ function renderHistoryView() {
   `;
 
   const list = $('#history-list');
+  if (!list) return;
   state.history.forEach((snap, i) => {
+    const games = snap.games || [];
+    const added = snap.addedGames || [];
+    const removed = snap.removedGames || [];
     const item = document.createElement('div');
     item.className = 'card mb-md animate-fade-in';
     item.style.animationDelay = `${i * 0.05}s`;
@@ -241,26 +257,26 @@ function renderHistoryView() {
       <div class="card__body">
         <div class="flex flex--between mb-sm">
           <strong class="text-heading">${formatRelativeTime(snap.snapshotDate)}</strong>
-          <span class="tag tag--status">${snap.games.length} games</span>
+          <span class="tag tag--status">${games.length} games</span>
         </div>
         <div class="flex gap-md" style="flex-wrap:wrap;">
-          ${snap.addedGames.length > 0 ? `
+          ${added.length > 0 ? `
             <div>
-              <span class="tag tag--playtime">+${snap.addedGames.length} added</span>
+              <span class="tag tag--playtime">+${added.length} added</span>
               <div class="text-muted mt-xs" style="font-size:var(--font-size-xs);">
-                ${snap.addedGames.slice(0, 3).map(g => g.name).join(', ')}${snap.addedGames.length > 3 ? '...' : ''}
+                ${added.slice(0, 3).map(g => g.name).join(', ')}${added.length > 3 ? '...' : ''}
               </div>
             </div>
           ` : ''}
-          ${snap.removedGames.length > 0 ? `
+          ${removed.length > 0 ? `
             <div>
-              <span class="tag" style="background:rgba(244,67,54,0.15);color:var(--color-danger);">-${snap.removedGames.length} removed</span>
+              <span class="tag" style="background:rgba(244,67,54,0.15);color:var(--color-danger);">-${removed.length} removed</span>
               <div class="text-muted mt-xs" style="font-size:var(--font-size-xs);">
-                ${snap.removedGames.slice(0, 3).map(g => g.name).join(', ')}${snap.removedGames.length > 3 ? '...' : ''}
+                ${removed.slice(0, 3).map(g => g.name).join(', ')}${removed.length > 3 ? '...' : ''}
               </div>
             </div>
           ` : ''}
-          ${snap.addedGames.length === 0 && snap.removedGames.length === 0 ? '<span class="text-muted">No changes</span>' : ''}
+          ${added.length === 0 && removed.length === 0 ? '<span class="text-muted">No changes</span>' : ''}
         </div>
       </div>
     `;
@@ -276,7 +292,15 @@ async function renderAchievements() {
 
   heroSection.classList.add('hidden');
   appContent.classList.remove('hidden');
-  showLoading(appContent);
+  appContent.innerHTML = `
+    <h2 class="section__title mb-lg">🏆 Achievements</h2>
+    <div class="flex flex--center" style="padding:var(--space-3xl) 0;">
+      <div class="text-center">
+        <div class="spinner spinner--lg mb-md"></div>
+        <div class="text-muted">Loading achievements...</div>
+      </div>
+    </div>
+  `;
 
   try {
     const result = await fetchAchievements(state.steamId);
@@ -328,35 +352,40 @@ async function renderAchievements() {
       item.style.animationDelay = `${i * 0.03}s`;
       item.innerHTML = `
         <div class="card__body">
-          <div class="flex flex--between mb-sm">
-            <div class="flex gap-sm" style="align-items:center;">
-              <img src="${game.headerImage}" alt="" style="width:120px;height:56px;object-fit:cover;border-radius:4px;">
-              <div>
-                <div class="card__title">${game.gameName}</div>
-                <div class="card__meta">
-                  <span class="tag tag--playtime">${game.earnedCount}/${game.totalAchievements}</span>
-                  <span class="tag tag--match">${pct}%</span>
+          <details class="achievement-game">
+            <summary class="achievement-game__header">
+              <div class="achievement-game__header-top">
+                <div class="flex gap-sm" style="align-items:center;">
+                  <img src="${game.headerImage}" alt="" style="width:120px;height:56px;object-fit:cover;border-radius:4px;">
+                  <div>
+                    <div class="card__title">${game.gameName}</div>
+                    <div class="card__meta">
+                      <span class="tag tag--playtime">${game.earnedCount}/${game.totalAchievements}</span>
+                      <span class="tag tag--match">${pct}%</span>
+                    </div>
+                  </div>
                 </div>
+                <span class="achievement-game__chevron"></span>
               </div>
+              <div class="score-bar">
+                <div class="score-bar__fill" style="width:${pct}%"></div>
+              </div>
+            </summary>
+            <div class="achievement-list">
+              ${game.achievements.map(a => `
+                <div class="achievement-item ${a.achieved ? 'earned' : 'locked'}">
+                  <img class="achievement-item__icon" src="${a.achieved ? a.icon : a.iconGray}" alt="" onerror="this.style.display='none'">
+                  <div class="achievement-item__info">
+                    <div class="achievement-item__name">${a.name}</div>
+                    <div class="achievement-item__desc">${a.description || ''}</div>
+                  </div>
+                  <div class="achievement-item__status ${a.achieved ? 'earned' : ''}">
+                    ${a.achieved ? '✓ Earned' : '🔒'}
+                  </div>
+                </div>
+              `).join('')}
             </div>
-          </div>
-          <div class="score-bar mb-sm">
-            <div class="score-bar__fill" style="width:${pct}%"></div>
-          </div>
-          <div class="achievement-list">
-            ${game.achievements.map(a => `
-              <div class="achievement-item ${a.achieved ? 'earned' : 'locked'}">
-                <img class="achievement-item__icon" src="${a.achieved ? a.icon : a.iconGray}" alt="" onerror="this.style.display='none'">
-                <div class="achievement-item__info">
-                  <div class="achievement-item__name">${a.name}</div>
-                  <div class="achievement-item__desc">${a.description || ''}</div>
-                </div>
-                <div class="achievement-item__status ${a.achieved ? 'earned' : ''}">
-                  ${a.achieved ? '✓ Earned' : '🔒'}
-                </div>
-              </div>
-            `).join('')}
-          </div>
+          </details>
         </div>
       `;
       list.appendChild(item);

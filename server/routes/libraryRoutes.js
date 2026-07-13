@@ -7,7 +7,7 @@ router.get('/:steamId', async (req, res, next) => {
   try {
     console.log(`[Route] GET /api/library/${req.params.steamId}`);
     const library = await libraryService.getLibrary(req.params.steamId);
-    console.log(`[Route] Library returned: ${library.games.length} games`);
+    console.log(`[Route] Library returned: ${(library.games || []).length} games`);
     res.json({
       steamId: library.steamId,
       playerName: library.playerName,

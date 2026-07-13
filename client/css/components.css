@@ -572,6 +572,57 @@ select.input {
   margin-top: 2px;
 }
 
+/* Achievement Game (collapsible) */
+.achievement-game {
+  width: 100%;
+}
+
+.achievement-game summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.achievement-game summary::-webkit-details-marker {
+  display: none;
+}
+
+.achievement-game summary::marker {
+  display: none;
+  content: '';
+}
+
+.achievement-game__header {
+  padding: 0;
+}
+
+.achievement-game__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.achievement-game__chevron {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.achievement-game[open] .achievement-game__chevron {
+  transform: rotate(-135deg);
+}
+
+.achievement-game .achievement-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .achievement-list {
   display: flex;
   flex-direction: column;

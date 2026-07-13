@@ -3,93 +3,69 @@ const Library = require('../models/Library');
 class RecommendService {
   async getRecommendations(steamId, count = 10, genreFilter = null) {
     const library = await Library.findOne({ steamId }).sort({ fetchedAt: -1 });
-    if (!library || !library.games.length) {
+    console.log(`[Recommend] Library found: ${library ? 'yes' : 'no'}, games: ${library?.games?.length || 0}`);
+    if (!library || !library.games || !library.games.length) {
       return { recommendations: [], algorithm: 'genre-affinity-v1', message: 'No library data found' };
     }
 
     const games = library.games;
-    const played = games.filter(g => g.playtimeForever > 0);
-    const unplayed = games.filter(g => g.playtimeForever === 0);
 
-    const genreAffinity = this._computeGenreAffinity(played, games);
-    const scored = this._scoreGames(unplayed, genreAffinity, genreFilter);
-    scored.sort((a, b) => b.matchScore - a.matchScore);
+    const unplayed = games
+      .filter(g => g.playtimeForever === 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    const top = scored.slice(0, count);
-    const recommendations = top.map(game => ({
-      appId: game.appId,
-      name: game.name,
-      headerImage: game.headerImage,
-      genres: game.genres,
-      matchScore: game.matchScore,
-      reason: this._generateReason(game, genreAffinity),
-      status: 'pending',
-      recommendedAt: new Date()
-    }));
+    const lowPlaytime = games
+      .filter(g => g.playtimeForever > 0 && g.playtimeForever < 60)
+      .sort((a, b) => a.playtimeForever - b.playtimeForever);
+
+    const unplayedRecs = unplayed
+      .slice(0, count)
+      .map(game => ({
+        appId: game.appId,
+        name: game.name,
+        headerImage: game.headerImage,
+        genres: game.genres,
+        matchScore: 95,
+        reason: 'You own this game but haven\'t played it yet.',
+        status: 'pending',
+        recommendedAt: new Date(),
+        type: 'suggested'
+      }));
+
+    const lowPlaytimeRecs = lowPlaytime
+      .slice(0, Math.max(0, count - unplayedRecs.length))
+      .map(game => ({
+        appId: game.appId,
+        name: game.name,
+        headerImage: game.headerImage,
+        genres: game.genres,
+        matchScore: Math.max(90 - Math.floor(game.playtimeForever / 5), 50),
+        reason: `You've only played for ${this._formatHours(game.playtimeForever)}. Give it another try!`,
+        status: 'pending',
+        recommendedAt: new Date(),
+        type: 'suggested'
+      }));
+
+    const recommendations = [...unplayedRecs, ...lowPlaytimeRecs];
+    console.log(`[Recommend] Total: ${recommendations.length} (unplayed: ${unplayedRecs.length}, low-playtime: ${lowPlaytimeRecs.length})`);
 
     return {
       steamId,
       playerName: library.playerName,
       recommendations,
-      algorithm: 'genre-affinity-v1',
+      algorithm: 'least-playtime-v1',
       generatedAt: new Date()
     };
   }
 
-  _computeGenreAffinity(played, allGames) {
-    const affinity = {};
-    let totalMinutes = 0;
-
-    for (const game of played) {
-      totalMinutes += game.playtimeForever;
-      const genres = game.genres.length ? game.genres : ['Unknown'];
-      for (const genre of genres) {
-        affinity[genre] = (affinity[genre] || 0) + game.playtimeForever;
-      }
-    }
-
-    if (totalMinutes > 0) {
-      for (const genre in affinity) {
-        affinity[genre] = affinity[genre] / totalMinutes;
-      }
-    }
-
-    return affinity;
-  }
-
-  _scoreGames(unplayed, genreAffinity, genreFilter) {
-    return unplayed.map(game => {
-      const genres = game.genres.length ? game.genres : ['Unknown'];
-      let genreScore = 0;
-      for (const genre of genres) {
-        genreScore += (genreAffinity[genre] || 0);
-      }
-      genreScore = genres.length ? genreScore / genres.length : 0;
-
-      if (genreFilter && !genres.some(g => g.toLowerCase() === genreFilter.toLowerCase())) {
-        return { ...game, matchScore: 0 };
-      }
-
-      const matchScore = Math.min(Math.round(genreScore * 100 * 2.5 + Math.random() * 10), 99);
-      return { ...game, matchScore };
-    });
-  }
-
-  _generateReason(game, genreAffinity) {
-    const genres = game.genres.length ? game.genres : ['Unknown'];
-    const topGenre = genres.reduce((best, g) =>
-      (genreAffinity[g] || 0) > (genreAffinity[best] || 0) ? g : best, genres[0]);
-    const affinityPct = Math.round((genreAffinity[topGenre] || 0) * 100);
-
-    if (affinityPct > 20) {
-      return `You spend ${affinityPct}% of your playtime in ${topGenre} games. You might enjoy this title.`;
-    }
-    return `This ${genres.join('/')} game matches your gaming taste profile.`;
+  _formatHours(minutes) {
+    const hrs = Math.round(minutes / 60);
+    return `${hrs}h`;
   }
 
   async getStats(steamId) {
     const library = await Library.findOne({ steamId }).sort({ fetchedAt: -1 });
-    if (!library) return null;
+    if (!library || !library.games || !library.games.length) return null;
 
     const games = library.games;
     const totalMinutes = games.reduce((s, g) => s + g.playtimeForever, 0);
@@ -100,7 +76,7 @@ class RecommendService {
       if (game.playtimeForever > 0) {
         topGames.push({ name: game.name, playtime: game.playtimeForever, appId: game.appId });
       }
-      const genres = game.genres.length ? game.genres : ['Unknown'];
+      const genres = (game.genres && game.genres.length) ? game.genres : ['Unknown'];
       for (const genre of genres) {
         genreTotals[genre] = (genreTotals[genre] || 0) + game.playtimeForever;
       }

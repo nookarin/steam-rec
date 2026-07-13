@@ -64,6 +64,16 @@ class SteamService {
     const data = await res.json();
     return data.game?.achievements || [];
   }
+
+  async getAppDetails(appId) {
+    const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&l=english`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const appData = data?.[String(appId)];
+    if (!appData?.success) return null;
+    return appData.data || null;
+  }
 }
 
 module.exports = SteamService;

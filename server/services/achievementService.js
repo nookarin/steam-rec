@@ -6,6 +6,7 @@ class AchievementService {
   constructor() {
     this.steam = new SteamService(process.env.STEAM_API_KEY);
     this.CACHE_TTL_MS = 60 * 60 * 1000;
+    this.PARALLEL_LIMIT = 5;
   }
 
   async fetchAchievements(steamId, appId, forceRefresh = false) {
@@ -16,13 +17,8 @@ class AchievementService {
       }
     }
 
-    console.log(`[Achievement] Fetching achievements for steamId=${steamId}, appId=${appId}`);
     const achievements = await this.steam.getPlayerAchievements(steamId, appId);
-
-    if (!achievements) {
-      console.log(`[Achievement] No achievements found for appId=${appId}`);
-      return null;
-    }
+    if (!achievements) return null;
 
     const earned = achievements.filter(a => a.achieved);
 
@@ -47,24 +43,30 @@ class AchievementService {
       { new: true, upsert: true }
     );
 
-    console.log(`[Achievement] Saved: ${earned.length}/${achievements.length} for appId=${appId}`);
     return saved;
   }
 
-  async fetchAllAchievements(steamId, forceRefresh = false) {
+  async fetchAllAchievements(steamId, forceRefresh = false, limit = 15) {
     const library = await Library.findOne({ steamId }).sort({ fetchedAt: -1 });
     if (!library) return [];
 
     const playedGames = library.games
       .filter(g => g.playtimeForever > 0)
       .sort((a, b) => b.playtimeForever - a.playtimeForever)
-      .slice(0, 30);
+      .slice(0, limit);
 
     const results = [];
-    for (const game of playedGames) {
-      try {
-        const achievement = await this.fetchAchievements(steamId, game.appId, forceRefresh);
-        if (achievement) {
+    for (let i = 0; i < playedGames.length; i += this.PARALLEL_LIMIT) {
+      const batch = playedGames.slice(i, i + this.PARALLEL_LIMIT);
+      const batchResults = await Promise.allSettled(
+        batch.map(game => this.fetchAchievements(steamId, game.appId, forceRefresh))
+      );
+
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        const game = batch[j];
+        if (result.status === 'fulfilled' && result.value) {
+          const achievement = result.value;
           results.push({
             appId: game.appId,
             gameName: game.name,
@@ -77,8 +79,6 @@ class AchievementService {
             achievements: achievement.achievements
           });
         }
-      } catch (err) {
-        console.log(`[Achievement] Failed for appId=${game.appId}: ${err.message}`);
       }
     }
 

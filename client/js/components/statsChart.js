@@ -11,6 +11,7 @@ function getGenreColor(index) {
 }
 
 export function renderStatsDashboard(container, stats) {
+  if (!container) return;
   if (!stats) {
     container.innerHTML = `
       <div class="empty-state">

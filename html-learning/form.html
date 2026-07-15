@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Form</title>
+    <link href='https://fonts.googleapis.com/css?family=Noto Sans Thai' rel='stylesheet'>
+        <style>
+        body 
+        {
+            font-family: Noto Sans Thai, sans-serif;
+            color: rgb(0, 0, 0);
+            background-image: url(https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D);
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat; 
+            background-attachment: fixed; 
+        }
+        .centered 
+        {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -30%);
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="centered"  style="background-color:rgba(255, 255, 255, 0.781); padding: 20px 20px;">
+    <h1>Register Form</h1>
+    <form action="" method="get">
+        <label>Email: <input type="email" name="email" placeholder="email@example.com" required></label>
+        <label>Name:<input id="username" type="text" name="username" placeholder="Username" required></label>
+        <label>Password: <input type="password" name="password" placeholder="Password" required></label>
+        <br>
+        <label>Package
+            <input type="radio" name="package" value="basic" required> Basic
+            <input type="radio" name="package" value="premium" required> Premium
+        </label>
+        <br>
+        <label>Interest
+            <input type="checkbox" name="interest" value="Movie">Movie
+            <input type="checkbox" name="interest" value="Music">Music
+            <input type="checkbox" name="interest" value="Gaming">Gaming
+        </label>
+        <br>
+        <button type="submit">Register</button>
+    </form>
+    </div>
+</body>
+</html>

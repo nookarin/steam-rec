@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fair Fizz Order Form</title>
+</head>
+<body>
+    <h1>Fair Fizz Order</h1>
+    <p>Order Here</p>
+    <form action="/api/order" method="POST">
+        <p>Customer Name: <input type="text" name="customer_name" required></p>
+        <p>Customer Email: <input type="email" name="customer_email" required></p>
+        <p>Address: <input type="text" name="address" required></p>
+        <p>Flavor: <input type="radio" name="flavor" value="citrus" required> Citrus
+            <input type="radio" name="flavor" value="berry" required> Berry
+            <input type="radio" name="flavor" value="tropical" required> Tropical</p>
+        <p>Size: <select name="size" required>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+        </select></p>
+        <p>Quantity: <input type="number" name="quantity" min="1" required></p>
+        <button type="submit">Place Order</button>
+    </form>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { foodTruck } from "../fakeData/foodTruckDB.js";
+import { foodTruck, menuItems } from "../fakeData/foodTruckDB.js";
 
 // Stage 1: Reading object properties
 //
@@ -12,8 +12,10 @@ import { foodTruck } from "../fakeData/foodTruckDB.js";
 // It receives a truck object and returns the value of its name property.
 // Expected output: "Chrome and Burger"
 
-function getTruckName(truck) {
+function getTruckName(truck) 
+{
   // TODO: your code here
+  return foodTruck.name
 }
 
 console.log(getTruckName(foodTruck));
@@ -28,6 +30,7 @@ console.log(getTruckName(foodTruck));
 
 function isTruckOpen(truck) {
   // TODO: your code here
+  return foodTruck.isOpen
 }
 
 console.log(isTruckOpen(foodTruck));
@@ -41,6 +44,7 @@ console.log(isTruckOpen(foodTruck));
 
 function getDailySalesTarget(truck) {
   // TODO: your code here
+  return foodTruck.dailySalesTarget
 }
 
 console.log(getDailySalesTarget(foodTruck));
@@ -55,6 +59,7 @@ console.log(getDailySalesTarget(foodTruck));
 
 function describeTruck(truck) {
   // TODO: your code here
+  return foodTruck.name + " is locataed in " + foodTruck.location
 }
 
 console.log(describeTruck(foodTruck));

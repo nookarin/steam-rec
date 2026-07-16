@@ -14,6 +14,7 @@ import { menuItems } from "../fakeData/foodTruckDB.js";
 
 function countMenuItems(items) {
   // TODO: your code here
+  return menuItems.length
 }
 
 console.log(countMenuItems(menuItems));
@@ -27,6 +28,7 @@ console.log(countMenuItems(menuItems));
 
 function getFirstMenuItem(items) {
   // TODO: your code here
+  return menuItems[0]
 }
 
 console.log(getFirstMenuItem(menuItems));
@@ -40,6 +42,7 @@ console.log(getFirstMenuItem(menuItems));
 
 function getFirstItemName(items) {
   // TODO: your code here
+  return menuItems[0].name
 }
 
 console.log(getFirstItemName(menuItems));
@@ -54,6 +57,7 @@ console.log(getFirstItemName(menuItems));
 
 function getLastMenuItem(items) {
   // TODO: your code here
+  return "id: " + menuItems[menuItems.length - 1].id + ", " + "name: " + menuItems[menuItems.length - 1]
 }
 
 console.log(getLastMenuItem(menuItems));
@@ -67,6 +71,7 @@ console.log(getLastMenuItem(menuItems));
 
 function getLastItemPrice(items) {
   // TODO: your code here
+  return menuItems[menuItems.length - 1].price
 }
 
 console.log(getLastItemPrice(menuItems));

@@ -18,6 +18,7 @@ import { menuItems, orders } from "../fakeData/foodTruckDB.js";
 
 function getUnavailableItems(items) {
   // TODO: your code here
+    return items.filter((item) => item.isAvailable === false);
 }
 
 console.log(getUnavailableItems(menuItems));
@@ -31,6 +32,7 @@ console.log(getUnavailableItems(menuItems));
 
 function getAffordableItems(items) {
   // TODO: your code here
+    return items.filter((item) => item.price <= 200);
 }
 
 console.log(getAffordableItems(menuItems));
@@ -44,6 +46,7 @@ console.log(getAffordableItems(menuItems));
 
 function getLowStockItems(items) {
   // TODO: your code here
+  return items.filter((item) => item.stock <= 10);
 }
 
 console.log(getLowStockItems(menuItems));
@@ -57,6 +60,7 @@ console.log(getLowStockItems(menuItems));
 
 function getCompletedOrders(orderList) {
   // TODO: your code here
+  return orderList.filter((orderedItem) => orderedItem.status === "completed");
 }
 
 console.log(getCompletedOrders(orders));
@@ -73,6 +77,7 @@ console.log(getCompletedOrders(orders));
 
 function getAvailableBurgers(items) {
   // TODO: your code here
+    return items.filter((item) => item.category === "burger" && item.isAvailable === true);
 }
 
 console.log(getAvailableBurgers(menuItems));
@@ -88,6 +93,7 @@ console.log(getAvailableBurgers(menuItems));
 
 function getBurgersWithinBudget(items, maximumPrice) {
   // TODO: your code here
+  return items.filter((item) => item.price <= maximumPrice);
 }
 
 console.log(getBurgersWithinBudget(menuItems, 220));
